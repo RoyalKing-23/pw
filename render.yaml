@@ -9,21 +9,21 @@ services:
       - key: NODE_VERSION
         value: 20
       - key: MONGODB_URI
-        fromConfig: true # User should set this in Render UI
+        sync: false
       - key: BOT_TOKEN
-        fromConfig: true
+        sync: false
       - key: JWT_SECRET
-        fromConfig: true
+        sync: false
       - key: PW_API
-        fromConfig: true
+        sync: false
       - key: JWT_ACCESS_EXPIRES
         value: "15"
       - key: JWT_REFRESH_EXPIRES_DAYS
         value: "30"
       - key: LOG_CHANNEL_ID
-        fromConfig: true
+        sync: false
       - key: REFRESH_API_KEY
-        fromConfig: true
+        sync: false
       - key: NEXT_PUBLIC_APP_NAME
         value: "PW Quantum"
       - key: JWT_ACCESS_EXPIRES_SECONDS
@@ -31,6 +31,6 @@ services:
       - key: NEXT_PUBLIC_TG
         value: "https://t.me/PwQuantum"
       - key: SHORTNER_TOKEN_SECRET
-        fromConfig: true
+        sync: false
       - key: NEXT_PUBLIC_GOOGLE_ADSENSE_CLIENT_ID
-        fromConfig: true
+        sync: false
