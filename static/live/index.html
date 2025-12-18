@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CloudFront Signed HLS Player</title>
+<style>
+  body { margin: 0; background: #000; display: flex; justify-content: center; align-items: center; height: 100vh; }
+  video { width: 80vw; height: auto; background: #000; }
+</style>
+</head>
+<body>
+
+<video id="video" controls></video>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+  const video = document.getElementById('video');
+
+  // Your signed master playlist URL with query params (Signature, Policy, Key-Pair-Id)
+  const masterPlaylistURL = "https://d1xfuppq3g677h.cloudfront.net/index.m3u8?Signature=wbtzYSqt4QNjHHoR18gPxR6gY6fDCoEJxGsLqQ4UGG8dmx8-7X1QclqVjNzc-hkQ2pbhutUYYf2KCMOGl2RXRfh7Ga9bEfls1EKL8XXE67etUdA6QTy0joMalhQZdxICw2VO0RD02UvuKWlQir1~Pewe0~YfBLzPfI22SN6e3nYxEa4g1XqszlhjNFc7tvjuak6OU~l1TMieaLoP0EVDVbHGTLamBtLTEfWA1R4tBEPEHmNP43RgnfbN~otenKxFK0zqfoFFlJTg8i1FM2PIovTgZD1NTuB2-rhnPPPZgFWcbXOc-Ki2XW53jxMNCButkHrEmvMn5AiTepL2NlOsqQ__&Key-Pair-Id=APKAXVKMENFCRKTG5XE2&Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9kMXhmdXBwcTNnNjc3aC5jbG91ZGZyb250Lm5ldC8qIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzUyMzA5MzEzfX19XX0_";
+
+  // Parse the signature parameters from the master playlist URL to reuse for segment requests
+  const urlObj = new URL(masterPlaylistURL);
+  const signature = urlObj.searchParams.get('Signature');
+  const keyPairId = urlObj.searchParams.get('Key-Pair-Id');
+  const policy = urlObj.searchParams.get('Policy');
+
+  if (Hls.isSupported()) {
+    const hls = new Hls({
+      // Intercept all XHR requests to append signature query params
+      xhrSetup: function(xhr, url) {
+        try {
+          const reqUrl = new URL(url);
+          // Append the CloudFront signed parameters if not present
+          if (!reqUrl.searchParams.has('Signature')) {
+            reqUrl.searchParams.set('Signature', signature);
+          }
+          if (!reqUrl.searchParams.has('Key-Pair-Id')) {
+            reqUrl.searchParams.set('Key-Pair-Id', keyPairId);
+          }
+          if (!reqUrl.searchParams.has('Policy')) {
+            reqUrl.searchParams.set('Policy', policy);
+          }
+          xhr.open('GET', reqUrl.toString(), true);
+        } catch (e) {
+          // fallback if URL parsing fails
+          xhr.open('GET', url, true);
+        }
+      }
+    });
+    hls.loadSource(masterPlaylistURL);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+      video.play();
+    });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    // Native HLS support (Safari, iOS)
+    video.src = masterPlaylistURL;
+    video.addEventListener('loadedmetadata', function() {
+      video.play();
+    });
+  } else {
+    console.error('HLS not supported in this browser');
+  }
+</script>
+
+</body>
+</html>
