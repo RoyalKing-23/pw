@@ -2,7 +2,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import dbConnect from "@/lib/mongodb";
 import User from "@/models/User";
-import Batch from "@/models/Batch";
 import { v4 as uuidv4 } from "uuid";
 import jwt from "jsonwebtoken";
 import ServerConfig from "@/models/ServerConfig";
@@ -146,99 +145,6 @@ export default async function handler(
     user!.ActualRefresh = realRefreshToken;
     user!.randomId = randomId;
     user!.hasLoggedIn = true;
-    await user!.save();
-
-    // Optimised Batch Sync
-    const fetchBatchPage = async (token: string, type: string, page: number) => {
-      try {
-        const controller = new AbortController();
-        const tId = setTimeout(() => controller.abort(), 5000);
-        const resBatch = await fetch(
-          `${BASE_URL}/batch-service/v1/batches/purchased-batches?page=${page}&type=ALL&amount=${type}`,
-          {
-            method: "GET",
-            headers: {
-              accept: "application/json, text/plain, */*",
-              authorization: `Bearer ${token}`,
-              "client-id": "5eb393ee95fab7468a79d189",
-              "client-type": "WEB",
-              "client-version": "1.1.1",
-              randomid: uuidv4(),
-            },
-            signal: controller.signal,
-          }
-        ).finally(() => clearTimeout(tId));
-        const resData = await resBatch.json();
-        return resData.success && Array.isArray(resData.data) ? resData.data.map((i: any) => i.batch || i) : [];
-      } catch (err) {
-        return [];
-      }
-    };
-
-    const [paidBatches, freeBatches] = await Promise.all([
-      fetchBatchPage(realAccessToken, "paid", 1),
-      fetchBatchPage(realAccessToken, "free", 1)
-    ]);
-
-    const purchasedBatches = Array.from(new Map([...paidBatches, ...freeBatches].map(i => [i._id, i])).values());
-    const { getBatchInfo } = await import("@/lib/batch");
-
-    const batchesToSync = purchasedBatches.slice(0, 10);
-    await Promise.all(batchesToSync.map(async (batch) => {
-      try {
-        const batchDetails = await getBatchInfo(batch._id, "details");
-        const batchDoc = {
-          batchId: batch._id,
-          batchName: batchDetails?.name || batch.name || "Unknown Batch",
-          batchPrice: batchDetails?.fee?.total || 0,
-          batchImage: batchDetails?.iosPreviewImageUrl || (batch.previewImage?.baseUrl + batch.previewImage?.key) || "",
-          template: batchDetails?.template || "NORMAL",
-          BatchType: (batchDetails?.fee?.total || 0) > 0 ? "PAID" : "FREE",
-          language: batchDetails?.language || "English",
-          byName: batchDetails?.byName || "Unknown",
-          startDate: batchDetails?.startDate || new Date().toISOString(),
-          endDate: batchDetails?.endDate || new Date().toISOString(),
-          batchStatus: true,
-        };
-        const enrolledToken = {
-          ownerId: user!._id,
-          accessToken: realAccessToken,
-          refreshToken: realRefreshToken,
-          tokenStatus: true,
-          randomId,
-          updatedAt: new Date(),
-        };
-        const existingBatch = await Batch.findOne({ batchId: batch._id });
-        if (!existingBatch) {
-          await Batch.create({ ...batchDoc, enrolledTokens: [enrolledToken] });
-        } else {
-          const tIdx = existingBatch.enrolledTokens.findIndex((t: any) => t.ownerId.toString() === user!._id.toString());
-          if (tIdx !== -1) {
-            existingBatch.enrolledTokens[tIdx] = enrolledToken;
-          } else {
-            existingBatch.enrolledTokens.push(enrolledToken);
-          }
-          Object.assign(existingBatch, batchDoc);
-          await existingBatch.save();
-        }
-      } catch (err) {
-        console.error(`Sync error for ${batch._id}:`, err);
-      }
-    }));
-
-    const updateResult = await Batch.updateMany(
-      { "enrolledTokens.ownerId": user!._id },
-      {
-        $set: {
-          "enrolledTokens.$[elem].accessToken": realAccessToken,
-          "enrolledTokens.$[elem].refreshToken": realRefreshToken,
-          "enrolledTokens.$[elem].updatedAt": new Date(),
-          "enrolledTokens.$[elem].randomId": randomId,
-          "enrolledTokens.$[elem].tokenStatus": true,
-        },
-      },
-      { arrayFilters: [{ "elem.ownerId": user!._id }] }
-    );
 
     const payload = { userId: user!._id, name: user!.UserName, telegramId: user!.telegramId, PhotoUrl: user!.photoUrl };
     const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_ACCESS_EXPIRES_SECONDS });
@@ -260,7 +166,7 @@ export default async function handler(
       `refreshToken=${refreshToken}; Path=/; HttpOnly${cookieSecurity}; Max-Age=${60 * 60 * 24 * JWT_REFRESH_EXPIRES_DAYS}`,
     ]);
 
-    await sendTelegramLog(`✅ *OTP Login Verified for ${user!.UserName}*\n🔁 *Batches:* ${updateResult.modifiedCount}`);
+    await sendTelegramLog(`✅ *OTP Login Verified for ${user!.UserName}* (Instant)`);
 
     return res.status(200).json({
       success: true,
