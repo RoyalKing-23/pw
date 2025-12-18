@@ -33,8 +33,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const realRefreshToken = user.ActualRefresh!;
         const randomId = user.randomId || uuidv4();
 
+        interface PWBatch {
+          _id: string;
+          name: string;
+          fee?: {
+            total: number;
+          };
+          iosPreviewImageUrl?: string;
+          previewImage?: {
+            baseUrl: string;
+            key: string;
+          };
+          template?: string;
+          language?: string;
+          byName?: string;
+          startDate?: string;
+          endDate?: string;
+        }
+
         // Helper to fetch batch pages
-        const fetchBatchPage = async (token: string, type: string, page: number) => {
+        const fetchBatchPage = async (token: string, type: string, page: number): Promise<PWBatch[]> => {
           try {
             const controller = new AbortController();
             const tId = setTimeout(() => controller.abort(), 5000);
@@ -66,14 +84,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         // Parallelize batch sync (limit to 10 batches for speed)
         const batchesToSync = purchasedBatches.slice(0, 10);
-        await Promise.all(batchesToSync.map(async (batch) => {
+        await Promise.all(batchesToSync.map(async (batch: PWBatch) => {
           try {
             const batchDetails = await getBatchInfo(batch._id, "details");
             const batchDoc = {
               batchId: batch._id,
               batchName: batchDetails?.name || batch.name || "Unknown Batch",
               batchPrice: batchDetails?.fee?.total || 0,
-              batchImage: batchDetails?.iosPreviewImageUrl || (batch.previewImage?.baseUrl + batch.previewImage?.key) || "",
+              batchImage: batchDetails?.iosPreviewImageUrl || (batch.previewImage ? `${batch.previewImage.baseUrl}${batch.previewImage.key}` : "") || "",
               template: batchDetails?.template || "NORMAL",
               BatchType: (batchDetails?.fee?.total || 0) > 0 ? "PAID" : "FREE",
               language: batchDetails?.language || "English",
