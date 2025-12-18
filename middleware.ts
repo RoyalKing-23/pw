@@ -8,10 +8,10 @@ const REFRESH_API_KEY = process.env.REFRESH_API_KEY;
 const PUBLIC_API_PATHS = ["/api/auth"];
 const ADMIN_API_PATHS = ["/api/admin"];
 const SECRET = new TextEncoder().encode(process.env.JWT_SECRET!);
-const baseUrl = process.env.BASE_URL;
-if (!baseUrl) {
-  throw new Error("Missing BASE_URL environment variable error in middleware!");
-}
+// Fallback to request origin if BASE_URL is not set
+const getBaseUrl = (req: NextRequest) => {
+  return process.env.BASE_URL || req.nextUrl.origin;
+};
 const isPublicApi = (pathname: string) =>
   PUBLIC_API_PATHS.some((publicPath) => pathname.startsWith(publicPath));
 
@@ -41,7 +41,7 @@ async function getOrSetAnonId(req: NextRequest, res?: NextResponse) {
     }
 
     // Track anon (fire and forget)
-    await fetch(`${baseUrl}/api/track-anon`, {
+    await fetch(`${getBaseUrl(req)}/api/track-anon`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -123,7 +123,7 @@ export async function middleware(req: NextRequest) {
   //   // Call check-verification API
   //   try {
   //     // Fetch user info from /api/AboutMe
-  //     const aboutRes = await fetch(`${baseUrl}/api/AboutMe`, {
+  //     const aboutRes = await fetch(`${getBaseUrl(req)}/api/AboutMe`, {
   //       method: "GET",
   //       headers: {
   //         cookie: req.headers.get("cookie") || "",
@@ -137,9 +137,9 @@ export async function middleware(req: NextRequest) {
   //     const aboutJson = await aboutRes.json();
   //     const tag = aboutJson?.user?.tag;
 
-  //     // Only check verification if tag is "user" or missing`${baseUrl}/api/auth/check-verification`
+  //     // Only check verification if tag is "user" or missing`${getBaseUrl(req)}/api/auth/check-verification`
   //     if (!tag || tag === "user") {
-  //       const apiRes = await fetch(`${baseUrl}/api/auth/check-verification`,
+  //       const apiRes = await fetch(`${getBaseUrl(req)}/api/auth/check-verification`,
   //         {
   //           method: "POST",
   //           headers: { "Content-Type": "application/json" },
@@ -190,7 +190,7 @@ export async function middleware(req: NextRequest) {
       // ✅ Inserted Telegram Check (only for /study/**)
       if (isStudyPage) {
         // try {
-        //   const url = `${baseUrl}/api/CheckTgStatus`;
+        //   const url = `${getBaseUrl(req)}/api/CheckTgStatus`;
 
 
 
