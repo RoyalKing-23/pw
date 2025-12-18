@@ -58,12 +58,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           } catch (err) { return []; }
         };
 
-        const [paidBatches, freeBatches] = await Promise.all([
-          fetchBatchPage(realAccessToken, "paid", 1),
-          fetchBatchPage(realAccessToken, "free", 1)
-        ]);
-
-        const purchasedBatches = Array.from(new Map([...paidBatches, ...freeBatches].map(i => [i._id, i])).values());
+        // Fetch only paid batches for automatic sync as requested
+        const purchasedBatches = await fetchBatchPage(realAccessToken, "paid", 1);
 
         // Update user.enrolledBatches locally first
         user.enrolledBatches = purchasedBatches.map(b => ({ batchId: b._id, name: b.name }));
