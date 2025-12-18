@@ -12,7 +12,7 @@ export async function getBatchInfo(batchId: string, type: string = "details") {
   if (!PW_API) throw new Error("PW_API env not set");
   let url = `${PW_API}/${apiVersion}/batches/${batchId}/${type}`;
   try {
-    const response = await axios.get(url);
+    const response = await axios.get(url, { timeout: 5000 });
     return response.data?.data || null;
   } catch (err) {
     console.log("[getBatchInfo] Error:", err);

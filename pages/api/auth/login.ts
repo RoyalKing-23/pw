@@ -10,8 +10,8 @@ import crypto from "crypto";
 
 type Data = { success: boolean; message: string };
 
-const TELEGRAM_BOT_TOKEN = "8124407694:AAFHNHL5NOWvkwqeYNp5MmwLVshumBjU07o";
-const TELEGRAM_CHANNEL_ID = "-1002959186885";
+const TELEGRAM_BOT_TOKEN = process.env.BOT_TOKEN!;
+const TELEGRAM_CHANNEL_ID = process.env.LOG_CHANNEL_ID!;
 const BASE_URL = process.env.PW_API;
 async function sendTelegramLog(message: string) {
   try {
