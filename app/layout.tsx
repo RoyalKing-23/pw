@@ -10,29 +10,11 @@ import TriggerCleanup from "@/app/TriggerCleanup";
 
 const inter = Inter({ subsets: ["latin"] });
 
+import { getServerConfig } from "@/utils/getServerConfig";
+
 // Server-side function to fetch server info
 async function getServerInfo() {
-  try {
-    const baseUrl = process.env.BASE_URL;
-
-    if (!baseUrl) {
-      throw new Error("Missing BASE_URL environment variable");
-    }
-const url = `${baseUrl}/api/auth/serverInfo`;
-    const res = await fetch(url, {
-      cache: "no-store", // Disable caching to get fresh data
-    });
-
-    if (!res.ok) {
-      console.error("Failed to fetch server info XD: ", url);
-      return null;
-    }
-
-    return await res.json();
-  } catch (error) {
-    console.error("Error fetching server info:", error);
-    return null;
-  }
+  return await getServerConfig();
 }
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -66,7 +48,7 @@ export default async function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <RootInitializer serverInfo={serverInfo}>{children}</RootInitializer>
-                <NetworkStatus />
+        <NetworkStatus />
 
         <Toaster position="top-right" richColors closeButton />
         <TriggerCleanup />

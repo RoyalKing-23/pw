@@ -12,6 +12,9 @@ export default async function handler(
     // Verify user token before proceeding
     const user = await authenticateUser(req, res);
     let ActualToken = user.ActualToken;
+    if (!ActualToken) {
+      return res.status(401).json({ message: "PenPencil token missing. Please login again." });
+    }
     const PW_API = process.env.PW_API;
     const { BatchId, SubjectId, ContentId } = req.query;
 
@@ -47,7 +50,7 @@ export default async function handler(
     });
 
     const data = response.data?.data;
-    return res.status(200).json({ success:true, data });
+    return res.status(200).json({ success: true, data });
   } catch (error: any) {
     const status = error.response?.status || 500;
 
