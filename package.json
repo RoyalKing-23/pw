@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": "24.x"
+    "node": "20.x"
   },
   "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "next start -p 4000 -H 0.0.0.0",
+    "start": "next start -p $PORT",
     "bot": "tsx scripts/bot.ts",
     "lint": "next lint",
     "both": "concurrently \"npm run dev\" \"npm run bot\""
