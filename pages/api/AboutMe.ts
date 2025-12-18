@@ -82,9 +82,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Update user.enrolledBatches locally first
         user.enrolledBatches = purchasedBatches.map(b => ({ batchId: b._id, name: b.name }));
 
-        // Parallelize batch sync (limit to 10 batches for speed)
+        // Limit to 10 batches for speed
         const batchesToSync = purchasedBatches.slice(0, 10);
-        await Promise.all(batchesToSync.map(async (batch: PWBatch) => {
+
+        for (const batch of batchesToSync) {
           try {
             const batchDetails = await getBatchInfo(batch._id, "details");
             const batchDoc = {
@@ -121,8 +122,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               Object.assign(existingBatch, batchDoc);
               await existingBatch.save();
             }
-          } catch (err) { console.error(`Sync error:`, err); }
-        }));
+
+            // Small delay to prevent rate limiting from external API
+            await new Promise((resolve) => setTimeout(resolve, 200));
+          } catch (err) {
+            console.error(`Sync error:`, err);
+          }
+        }
 
         await user.save();
       } catch (syncErr) {
